@@ -4,14 +4,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # --- Configuración de la Página ---
-st.set_page_config(page_title="Radar Dual BTC/ETH", layout="wide")
+st.set_page_config(page_title="Radar Pro BTC/ETH", layout="wide")
 
-# Estética oscura y ajuste para móviles
 st.markdown("""
     <style>
     .main { background-color: #111827; }
     .stMetric { background-color: #1e1e2e; padding: 15px; border-radius: 10px; color: white; border: 1px solid #374151; }
-    /* Forzar ancho total en móvil */
     [data-testid="column"] { width: 100% !important; min-width: 100% !important; }
     </style>
     """, unsafe_allow_html=True)
@@ -28,7 +26,7 @@ def obtener_datos_cripto(id_cripto):
         tabla_datos = pd.DataFrame(lista_precios, columns=['Fecha', 'Precio'])
         return tabla_datos
     except Exception as e:
-        st.error(f"Error al obtener datos de {id_cripto}: {e}")
+        st.error(f"Error al obtener datos: {e}")
         return None
 
 def calcular_niveles_tecnicos(precios_serie, umbral_distancia):
@@ -46,7 +44,6 @@ def dibujar_grafico(datos_df, titulo, color_principal, umbral_nivel):
     precio_actual = precios.iloc[-1]
     indices = range(len(precios))
     
-    # Subimos el DPI a 120 para que no se vea borroso al estirarse
     fig, eje = plt.subplots(figsize=(10, 7), dpi=120) 
     fig.patch.set_facecolor('#111827')
     eje.set_facecolor('#1e1e2e')
@@ -54,45 +51,47 @@ def dibujar_grafico(datos_df, titulo, color_principal, umbral_nivel):
     eje.fill_between(indices, precios, color=color_principal, alpha=0.15)
     eje.plot(indices, precios, color=color_principal, linewidth=2.5)
 
-    # Precio actual con etiqueta más grande
+    # 1. Línea de Precio Actual
     eje.axhline(y=precio_actual, color='#22c55e', linestyle='-', linewidth=3, zorder=5)
-    eje.text(len(precios)//2, precio_actual, f" {round(precio_actual, 1)}€ ", 
-             color='white', va='center', ha='center', fontweight='bold', fontsize=12,
-             bbox=dict(facecolor='#22c55e', edgecolor='none', boxstyle='round,pad=0.6'))
+    
+    # 2. Etiqueta del Precio (Ahora desplazada hacia ARRIBA para que no la tape la línea)
+    # Calculamos un pequeño margen basado en el rango del gráfico
+    rango_y = precios.max() - precios.min()
+    desplazamiento = rango_y * 0.05 
+    
+    eje.text(len(precios)//2, precio_actual + desplazamiento, f" {round(precio_actual, 1)}€ ", 
+             color='white', va='bottom', ha='center', fontweight='bold', fontsize=13,
+             bbox=dict(facecolor='#22c55e', edgecolor='none', boxstyle='round,pad=0.6', alpha=0.9))
 
     niveles = calcular_niveles_tecnicos(precios, umbral_nivel)
     for nivel in niveles:
         eje.axhline(y=nivel, color='#facc15', linestyle='--', alpha=0.6, linewidth=1.2)
-        # Números de soporte más grandes para leer sin zoom
         eje.text(len(precios), nivel, f" {int(nivel)}", 
                  color='#facc15', va='center', fontsize=11, fontweight='bold')
 
-    eje.set_title(titulo, color='white', fontsize=20, fontweight='bold', pad=30)
+    eje.set_title(titulo, color='white', fontsize=20, fontweight='bold', pad=35)
     eje.tick_params(colors='gray', labelsize=11)
     eje.spines['top'].set_visible(False)
     eje.spines['right'].set_visible(False)
     eje.grid(True, axis='y', color='#374151', alpha=0.3)
     
-    plt.tight_layout() # Elimina márgenes inútiles para ganar espacio
+    plt.tight_layout()
     return fig
 
-# --- Interfaz Principal ---
+# --- Interfaz ---
 st.title("📊 Radar Pro BTC/ETH")
 
 if st.button('🔄 ACTUALIZAR MERCADO'):
-    # Usamos contenedores individuales para asegurar el ancho total
     datos_btc = obtener_datos_cripto("bitcoin")
     if datos_btc is not None:
         st.metric("BITCOIN (BTC)", f"{round(datos_btc['Precio'].iloc[-1], 2)} €")
         fig_btc = dibujar_grafico(datos_btc, "BITCOIN (BTC)", "#38bdf8", 4000)
         st.pyplot(fig_btc, use_container_width=True)
         
-    st.markdown("---") # Línea separadora
+    st.markdown("---")
         
     datos_eth = obtener_datos_cripto("ethereum")
     if datos_eth is not None:
         st.metric("ETHEREUM (ETH)", f"{round(datos_eth['Precio'].iloc[-1], 2)} €")
         fig_eth = dibujar_grafico(datos_eth, "ETHEREUM (ETH)", "#a78bfa", 300)
         st.pyplot(fig_eth, use_container_width=True)
-else:
-    st.info("Pulsa el botón para cargar el radar a pantalla completa.")
