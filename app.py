@@ -11,8 +11,8 @@ st.markdown("""
     <style>
     .main { background-color: #111827; }
     .stMetric { background-color: #1e1e2e; padding: 15px; border-radius: 10px; color: white; border: 1px solid #374151; }
-    /* Forzar que las columnas se apilen en pantallas pequeñas */
-    [data-testid="column"] { min-width: 300px ! width: 100% !important; }
+    /* Forzar ancho total en móvil */
+    [data-testid="column"] { width: 100% !important; min-width: 100% !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -46,52 +46,53 @@ def dibujar_grafico(datos_df, titulo, color_principal, umbral_nivel):
     precio_actual = precios.iloc[-1]
     indices = range(len(precios))
     
-    # Aumentamos el alto (8) para que se vea más grande
-    fig, eje = plt.subplots(figsize=(10, 8)) 
+    # Subimos el DPI a 120 para que no se vea borroso al estirarse
+    fig, eje = plt.subplots(figsize=(10, 7), dpi=120) 
     fig.patch.set_facecolor('#111827')
     eje.set_facecolor('#1e1e2e')
     
-    eje.fill_between(indices, precios, color=color_principal, alpha=0.1)
-    eje.plot(indices, precios, color=color_principal, linewidth=2)
+    eje.fill_between(indices, precios, color=color_principal, alpha=0.15)
+    eje.plot(indices, precios, color=color_principal, linewidth=2.5)
 
-    eje.axhline(y=precio_actual, color='#22c55e', linestyle='-', linewidth=2.5, zorder=5)
+    # Precio actual con etiqueta más grande
+    eje.axhline(y=precio_actual, color='#22c55e', linestyle='-', linewidth=3, zorder=5)
     eje.text(len(precios)//2, precio_actual, f" {round(precio_actual, 1)}€ ", 
-             color='white', va='center', ha='center', fontweight='bold', 
-             bbox=dict(facecolor='#22c55e', edgecolor='none', boxstyle='round,pad=0.5'))
+             color='white', va='center', ha='center', fontweight='bold', fontsize=12,
+             bbox=dict(facecolor='#22c55e', edgecolor='none', boxstyle='round,pad=0.6'))
 
     niveles = calcular_niveles_tecnicos(precios, umbral_nivel)
     for nivel in niveles:
-        eje.axhline(y=nivel, color='#facc15', linestyle='--', alpha=0.5, linewidth=1)
+        eje.axhline(y=nivel, color='#facc15', linestyle='--', alpha=0.6, linewidth=1.2)
+        # Números de soporte más grandes para leer sin zoom
         eje.text(len(precios), nivel, f" {int(nivel)}", 
-                 color='#facc15', va='center', fontsize=10, fontweight='bold')
+                 color='#facc15', va='center', fontsize=11, fontweight='bold')
 
-    eje.set_title(titulo, color='white', fontsize=18, fontweight='bold', pad=30)
-    eje.tick_params(colors='gray', labelsize=10)
+    eje.set_title(titulo, color='white', fontsize=20, fontweight='bold', pad=30)
+    eje.tick_params(colors='gray', labelsize=11)
     eje.spines['top'].set_visible(False)
     eje.spines['right'].set_visible(False)
     eje.grid(True, axis='y', color='#374151', alpha=0.3)
     
+    plt.tight_layout() # Elimina márgenes inútiles para ganar espacio
     return fig
 
 # --- Interfaz Principal ---
 st.title("📊 Radar Pro BTC/ETH")
 
 if st.button('🔄 ACTUALIZAR MERCADO'):
-    # En móvil, Streamlit pondrá automáticamente una columna debajo de otra
-    col1, col2 = st.columns(2)
-    
+    # Usamos contenedores individuales para asegurar el ancho total
     datos_btc = obtener_datos_cripto("bitcoin")
     if datos_btc is not None:
-        with col1:
-            st.metric("BITCOIN (BTC)", f"{round(datos_btc['Precio'].iloc[-1], 2)} €")
-            fig_btc = dibujar_grafico(datos_btc, "BITCOIN (BTC)", "#38bdf8", 4000)
-            st.pyplot(fig_btc, use_container_width=True) # Adaptar al ancho disponible
+        st.metric("BITCOIN (BTC)", f"{round(datos_btc['Precio'].iloc[-1], 2)} €")
+        fig_btc = dibujar_grafico(datos_btc, "BITCOIN (BTC)", "#38bdf8", 4000)
+        st.pyplot(fig_btc, use_container_width=True)
+        
+    st.markdown("---") # Línea separadora
         
     datos_eth = obtener_datos_cripto("ethereum")
     if datos_eth is not None:
-        with col2:
-            st.metric("ETHEREUM (ETH)", f"{round(datos_eth['Precio'].iloc[-1], 2)} €")
-            fig_eth = dibujar_grafico(datos_eth, "ETHEREUM (ETH)", "#a78bfa", 300)
-            st.pyplot(fig_eth, use_container_width=True) # Adaptar al ancho disponible
+        st.metric("ETHEREUM (ETH)", f"{round(datos_eth['Precio'].iloc[-1], 2)} €")
+        fig_eth = dibujar_grafico(datos_eth, "ETHEREUM (ETH)", "#a78bfa", 300)
+        st.pyplot(fig_eth, use_container_width=True)
 else:
-    st.info("Haz clic para cargar el radar.")
+    st.info("Pulsa el botón para cargar el radar a pantalla completa.")
